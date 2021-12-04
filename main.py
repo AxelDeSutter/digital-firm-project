@@ -186,15 +186,58 @@ async def root(payload: Request):
 @app.post("/update-invoice")
 async def root(payload: Request):
     body = await payload.json()
+    id = body['invoice_id']
+    amount_received = body['amount_received']
+    number = body['card_number']
+    invoice = db.execute('SELECT * FROM invoices WHERE id = ?', (id))
+    total = db.execute ('SELECT total_amount FROM invoices WHERE id = ?', (id))
+    already_received = db.execute ('SELECT amount_received FROM invoices WHERE id = ?', (id))
 
-    return
+    if (invoice > 0):
+        if CheckCreditCard(number) == True :
+            if (amount_received < total - already_received) == 0 :
+                if (amount_received + already_received == total):
+                    update_invoice = db.execute ('UPDATE invoices SET paid = True AND amount_received = ? WHERE id = ?', (amount_received, (id)))
+                    return update_invoice
+                else:
+                    update_already_received = db.execute('UPDATE invoices SET amount_received = ? WHERE id = ?', (amount_received, (id)))
+                    return update_already_received
+            else:
+                return "received too much"
+        else:
+            return "bad credit card number"
+    else:
+        return "no invoice found"
+   
 
 # # Retrieve company's statistics - Tom
 @app.post("/company-statistics")
 async def root(payload: Request):
     body = await payload.json()
+    id = body['company_vat_id']
+    quote = db.execute('SELECT * FROM quotes WHERE company = ?', (id))
+    MRR = 0
+    ARR = 0
+    ARC = 0
+    counter = 0
+    
+    for line in quote:
+        price = db.execute('SELECT price FROM quote')
+        join_subscription = db.execute('SELECT * FROM subscriptions JOIN quotes ON subcriptions.quote = quotes.id')
+        for line in join_subscription:
+            MRR += price
+            counter+=1
+    
+    if (counter > 0): 
+        ARC = MRR/line
 
-    return
+    ARR = MRR*12
+    
+    return {
+        "MRR" : MRR, 
+        "ARR" : ARR,
+        "ARC" : ARC
+    }
 
 # # Start server
 if __name__ == '__main__':
