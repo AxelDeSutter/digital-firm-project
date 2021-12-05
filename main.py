@@ -119,42 +119,31 @@ def convertToEuro(amount, currency):
 
 # # Routes
 # # Create company account - Salma
-            # vat TEXT PRIMARY KEY, # name TEXT NOT NULL, # email TEXT NOT NULL, # adress TEXT NOT NULL, # iban TEXT NOT NULL
+# vat TEXT PRIMARY KEY, # name TEXT NOT NULL, # email TEXT NOT NULL, # adress TEXT NOT NULL, # iban TEXT NOT NULL
 @app.post("/create-company-account")
 async def root(payload: Request):
-            # No need to open the db again ? 
     body = await payload.json()
-            #'nom', 'TVA', 'mail', 'adresse','banque' to change with API variable names
+     #'nom', 'TVA', 'mail', 'adresse','banque' to change with API variable names
     name = body['nom']
     vat = body['TVA']
     email = body['mail']
     adress = body['adresse']
     iban = body['banque']
-    query_company = dbase.execute('''
-    INSERT INTO companies(vat, name, email, adress, iban)
-    VALUES (?,?,?,?,?)''',
-    (vat, name, email, adress, iban))
-            # IF Conversion à faire selon la forme des variables données :
-            #   VALUES ({TVA}, {nom},{mail},{adresse},{iban})             
-            #   '''.format(TVA=value_dict['TVA'], nom=values_dict['nom'], mail=value_dict['mail'], adresse=value_dict['adresse', banque=value_dict['banque']))
+    query_company = dbase.execute('INSERT INTO companies(vat, name, email, adress, iban) VALUES (?,?,?,?,?)''',(vat, name, email, adress, iban))
     return vat, name, email, adress, iban
 
 # # Create customer account - Salma
-            #iban TEXT PRIMARY KEY, #name TEXT NOT NULL, #email TEXT NOT NULL, #adress TEXT NOT NULL, #company TEXT NOT NULL
+#iban TEXT PRIMARY KEY, #name TEXT NOT NULL, #email TEXT NOT NULL, #adress TEXT NOT NULL, #company TEXT NOT NULL
 @app.post("/create-customer-account")
 async def root(payload: Request):
     body = await payload.json()
-            #'banque', 'nom', 'mail', adresse', 'entreprise' to change with API variable names
+    #'banque', 'nom', 'mail', adresse', 'entreprise' to change with API variable names
     iban = body['banque']
     name = body['nom']
     email = body['mail']
     adress = body['adresse']
     company = body['entreprise']
-    query_company = dbase.execute('''
-    INSERT INTO customers(iban, name, email, adress, company_id)
-    VALUES (?,?,?,?,?)'''
-    (iban,name,email,adress,company))
-            #'''.format(iban=value_dict['TVA'], nom=values_dict['nom'], mail=value_dict['mail'], adresse=value_dict['adresse', banque=value_dict['banque']))
+    query_company = dbase.execute('INSERT INTO customers(iban, name, email, adress, company_id) VALUES (?,?,?,?,?)', (iban,name,email,adress,company))
     return iban, name, email, adress, company
 
 # # Create quote - Zelie
