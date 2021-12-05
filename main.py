@@ -280,13 +280,13 @@ async def root(payload: Request):
 
     invoice = db.execute(
         'SELECT * FROM invoices WHERE id = ?',
-        (int(id))
+        (int(id),)
     ).fetchall()
 
     # invoice[0] = Invoice to be updated
     # invoice[0][4] = Fouth column of invoice to be updated: 'received'
 
-    if (invoice > 0):
+    if (len(invoice) > 0):
         if CheckCreditCard(number) == True:
             if (received < invoice[0][3] - invoice[0][4]) == 0:
 
@@ -297,7 +297,7 @@ async def root(payload: Request):
                     )
                 else:
                     db.execute(
-                        'UPDATE invoices SET received = ? WHERE id = ?',
+                        'UPDATE invoices SET received = ? WHERE id = (?)',
                         (float(received), int(id))
                     )
 
@@ -323,28 +323,32 @@ async def root(payload: Request):
 
 
 # # Retrieve company's statistics - Tom
-@app.post("/company-statistics")
+@ app.post("/company-statistics")
 async def root(payload: Request):
-    body = await payload.json()
+    body=await payload.json()
 
-    id = body['company_vat_id']
+    id=body['company']
 
-    MRR = 0
+    MRR=0
 
-    quotes = db.execute(
+    quotes=db.execute(
         'SELECT * FROM quotes WHERE company = ?',
-        (int(id))
+        (str(id),)
     ).fetchall()
 
-    subscriptions_counter = 0
+    print("Quotes: " + str(len(quotes)))
+
+    subscriptions_counter=0
 
     for quote in quotes:
-        price = quote[3]
+        price=quote[3]
 
-        subscriptions = db.execute(
-            'SELECT * FROM subscriptions WHERE quote = ?',
-            (quote[0])
+        subscriptions=db.execute(
+            'SELECT * FROM subscriptions WHERE quote = ? AND accepted = 1',
+            (quote[0],)
         ).fetchall()
+
+        print('Subscriptions:' + str(len(subscriptions)))
 
         subscriptions_counter += len(subscriptions)
 

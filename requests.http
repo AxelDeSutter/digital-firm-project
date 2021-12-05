@@ -32,7 +32,7 @@ content-type: application/json
 {
     "company": "BE1234567890",
     "quantity": 1,
-    "price": "9.99",
+    "price": "99.99",
     "currency": "USD"
 }
 
@@ -44,7 +44,7 @@ content-type: application/json
 
 {
     "customer": "BE.987.654.321",
-    "quote": 4
+    "quote": 3
 }
 
 ###
@@ -54,7 +54,7 @@ POST http://localhost:8000/update-subscription HTTP/1.1
 content-type: application/json
 
 {
-    "subscription": 1,
+    "subscription": 3,
     "status": "accepted"
 }
 
@@ -75,7 +75,17 @@ POST http://localhost:8000/update-invoice HTTP/1.1
 content-type: application/json
 
 {
-    "invoice": 1,
-    "received": 5,
+    "invoice": 2,
+    "received": 1,
     "card": "1234567890"
+}
+
+###
+
+POST http://localhost:8000/company-statistics HTTP/1.1
+# Create Quote
+content-type: application/json
+
+{
+    "company": "BE1234567890"
 }
