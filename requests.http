@@ -1,0 +1,81 @@
+POST http://localhost:8000/create-company-account HTTP/1.1
+content-Type: application/json
+
+{
+    "name": "My Super Company",
+    "VAT": "BE1234567890",
+    "email": "super@company.com",
+    "adress": "Company City - 1000",
+    "IBAN": "BE.123.456.789"
+}
+
+###
+
+POST http://localhost:8000/create-customer-account HTTP/1.1
+# Create Customer Account
+content-type: application/json
+
+{
+    "IBAN": "BE.987.654.321",
+    "name": "Happy Customer",
+    "email": "happy@customer.com",
+    "adress": "Customer City - 1000",
+    "company": "BE1234567890"
+}
+
+###
+
+POST http://localhost:8000/create-quote HTTP/1.1
+# Create Quote
+content-type: application/json
+
+{
+    "company": "BE1234567890",
+    "quantity": 1,
+    "price": "9.99",
+    "currency": "USD"
+}
+
+###
+
+POST http://localhost:8000/create-subscription HTTP/1.1
+# Create Quote
+content-type: application/json
+
+{
+    "customer": "BE.987.654.321",
+    "quote": 4
+}
+
+###
+
+POST http://localhost:8000/update-subscription HTTP/1.1
+# Create Quote
+content-type: application/json
+
+{
+    "subscription": 1,
+    "status": "accepted"
+}
+
+###
+
+POST http://localhost:8000/pending-invoices HTTP/1.1
+# Create Quote
+content-type: application/json
+
+{
+    "customer": "BE.987.654.321"
+}
+
+###
+
+POST http://localhost:8000/update-invoice HTTP/1.1
+# Create Quote
+content-type: application/json
+
+{
+    "invoice": 1,
+    "received": 5,
+    "card": "1234567890"
+}

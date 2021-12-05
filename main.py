@@ -63,7 +63,7 @@ db.execute(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             subscription INT NOT NULL,
             date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            paid BOOL NOT NULL
+            paid BOOL NOT NULL,
             received FLOAT NOT NULL DEFAULT 0
         )
     '''
@@ -79,10 +79,12 @@ db.execute(
         )
     '''
 )
-#dans le cours ils ferment à chaque fois bien la base de données, à faire aussi ici? 
+# dans le cours ils ferment à chaque fois bien la base de données, à faire aussi ici?
 
 # Helper functions - Axel
 # Check credit card validity
+
+
 def CheckCreditCard(number):
     try:
         last = int(number[-1])
@@ -103,17 +105,22 @@ def CheckCreditCard(number):
 # - Example
 # - Convert 100$ to €:
 # - AnyVariableName = convertToEuro(100, "USD")
+
+
 def convertToEuro(amount, currency):
     today = str(date.today())
-    actualRate = db.execute('SELECT * FROM rates WHERE currency = ? AND date = ?', (currency, today)).fetchall()
+    actualRate = db.execute(
+        'SELECT * FROM rates WHERE currency = ? AND date = ?', (currency, today)).fetchall()
     rate = 1
     if(len(actualRate) > 0):
         rate = actualRate[0][3]
     else:
-        rateFromApi = requests.get('https://v6.exchangerate-api.com/v6/9f3b63e712fb3bf92872a235/latest/'+currency).json()
+        rateFromApi = requests.get(
+            'https://v6.exchangerate-api.com/v6/9f3b63e712fb3bf92872a235/latest/'+currency).json()
         if(rateFromApi['result'] == "success"):
             rate = rateFromApi['conversion_rates']['EUR']
-            db.execute('INSERT INTO rates (date, currency, rate) VALUES (?,?,?)', (today, currency, rate))
+            db.execute(
+                'INSERT INTO rates (date, currency, rate) VALUES (?,?,?)', (today, currency, rate))
         else:
             rate = 1
     return amount * rate
@@ -121,53 +128,69 @@ def convertToEuro(amount, currency):
 # # Routes
 # # Create company account - Salma
 # vat TEXT PRIMARY KEY, # name TEXT NOT NULL, # email TEXT NOT NULL, # adress TEXT NOT NULL, # iban TEXT NOT NULL
+
+
 @app.post("/create-company-account")
 async def root(payload: Request):
     body = await payload.json()
-     #'nom', 'TVA', 'mail', 'adresse','banque' to change with API variable names
-    name = body['nom']
-    vat = body['TVA']
-    email = body['mail']
-    adress = body['adresse']
-    iban = body['banque']
+
+    name = body['name']
+    vat = body['VAT']
+    email = body['email']
+    adress = body['adress']
+    iban = body['IBAN']
 
     db.execute(
-        'INSERT INTO companies(vat, name, email, adress, iban) VALUES (?,?,?,?,?)', 
+        'INSERT INTO companies (vat, name, email, adress, iban) VALUES (?,?,?,?,?)',
         (vat, name, email, adress, iban)
     )
 
-    return vat, name, email, adress, iban
+    return {
+        "statusCode": 200,
+        "message": vat + " company has been saved!"
+    }
 
 # # Create customer account - Salma
-#iban TEXT PRIMARY KEY, #name TEXT NOT NULL, #email TEXT NOT NULL, #adress TEXT NOT NULL, #company TEXT NOT NULL
+
+
 @app.post("/create-customer-account")
 async def root(payload: Request):
     body = await payload.json()
-    #'banque', 'nom', 'mail', adresse', 'entreprise' to change with API variable names
-    iban = body['banque']
-    name = body['nom']
-    email = body['mail']
-    adress = body['adresse']
-    company = body['entreprise']
+
+    iban = body['IBAN']
+    name = body['name']
+    email = body['email']
+    adress = body['adress']
+    company = body['company']
 
     db.execute(
-        'INSERT INTO customers(iban, name, email, adress, company_id) VALUES (?,?,?,?,?)',
-        (iban,name,email,adress,company)
+        'INSERT INTO customers(iban, name, email, adress, company) VALUES (?,?,?,?,?)',
+        (iban, name, email, adress, company)
     )
 
-    return iban, name, email, adress, company
+    return {
+        "statusCode": 200,
+        "message": name + " customer has been saved!"
+    }
 
 # # Create quote - Zelie
+
+
 @app.post("/create-quote")
 async def root(payload: Request):
     body = await payload.json()
-    
+
     quote = db.execute(
         'INSERT INTO quotes(company, quantity, price, currency) VALUES (?,?,?,?)',
         (body['company'], body['quantity'], body['price'], body['currency'])
     )
 
-    return quote 
+    print(quote)
+
+    return {
+        "statusCode": 200,
+        "message": "Quote (id: " + str(quote.lastrowid) + ") has been saved!"
+    }
 
 
 # # Create subscription - Zélie
@@ -176,77 +199,128 @@ async def root(payload: Request):
     body = await payload.json()
 
     subscription = db.execute(
-        'INSERT INTO subscription (customer, quote) VALUES (?,?)',
+        'INSERT INTO subscriptions (customer, quote, accepted) VALUES (?,?,0)',
         (body['customer'], body['quote'])
     )
 
-    return subscription 
+    return {
+        "statusCode": 200,
+        "message": "Subscription (id: " + str(subscription.lastrowid) + ") has been saved for customer " + body['customer'] + "!"
+    }
 
 # # Update subscription - Victor
+
+
 @app.post("/update-subscription")
 async def root(payload: Request):
     body = await payload.json()
 
-    if body['accepted']==True:
+    subscription = int(body['subscription'])
+
+    if body['status'] == "accepted":
+
+        # We set the subscription as accepted
         db.execute(
-            'UPDATE subscription SET accepted = 1 WHERE id = ?',
-            (int(body['id']))
+            'UPDATE subscriptions SET accepted = 1 WHERE id = ?',
+            ([subscription])
         )
-        return "Subscription accepted"
+
+        # We create the first invoice for the subscription
+        db.execute(
+            'INSERT INTO invoices (subscription, paid) VALUES (?,0)',
+            ([subscription])
+        )
+
+        return {
+            "statusCode": 200,
+            "message": "Subscription (id: " + str(subscription) + ") has been accepted!"
+        }
     else:
-        return "Bad request"
-    
+        return {
+            "statusCode": 400,
+            "message": "Bad request."
+        }
+
 
 # # Retrieve pending invoices - Victor
 @app.post("/pending-invoices")
 async def root(payload: Request):
     body = await payload.json()
-    
-    pending_invoices = db.execute(
-        'SELECT * from invoices WHERE paid=0 AND id = ?',
-        (int(body['userId']))
+
+    customer_subscriptions = db.execute(
+        'SELECT * FROM subscriptions WHERE customer = ?',
+        ([body['customer']])
     ).fetchall()
 
-    return pending_invoices
-    
+    invoices = []
+    for subscription in customer_subscriptions:
+        pending_invoices = db.execute(
+            'SELECT * FROM invoices WHERE paid=0 AND subscription = ?',
+            (str(subscription[0]))
+        ).fetchall()
+
+        if(len(pending_invoices) > 0):
+            invoices.append(pending_invoices)
+
+    return {
+        "statusCode": 200,
+        "message": "The following invoices are still waiting to be paid: ",
+        "invoices": invoices
+    }
+
 
 # # Update invoice (paid/unpaid) - Tom
 @app.post("/update-invoice")
 async def root(payload: Request):
     body = await payload.json()
 
-    id = body['invoice_id']
-    amount_received = body['received']
-    number = body['card_number']
-    invoice = db.execute('SELECT * FROM invoices WHERE id = ?', (id)).fetchall()
-    total = db.execute ('SELECT total_amount FROM invoices WHERE id = ?', (id)).fetchall()
+    id = body['invoice']
+    received = body['received']
+    number = body['card']
+
+    invoice = db.execute(
+        'SELECT * FROM invoices WHERE id = ?',
+        (int(id))
+    ).fetchall()
 
     # invoice[0] = Invoice to be updated
     # invoice[0][4] = Fouth column of invoice to be updated: 'received'
 
     if (invoice > 0):
-        if CheckCreditCard(number) == True :
-            if (amount_received < total - invoice[0][4]) == 0 :
+        if CheckCreditCard(number) == True:
+            if (received < invoice[0][3] - invoice[0][4]) == 0:
 
-                if (amount_received + invoice[0][4] == total):
-                    db.execute (
+                if (received + invoice[0][4] == invoice[0][3]):
+                    db.execute(
                         'UPDATE invoices SET paid = 1, received = ? WHERE id = ?',
-                        (float(amount_received), int(id))
-                     )
+                        (float(received), int(id))
+                    )
                 else:
                     db.execute(
                         'UPDATE invoices SET received = ? WHERE id = ?',
-                        (float(amount_received), int(id))
+                        (float(received), int(id))
                     )
 
-                return "Invoice successfully updated!"
+                return {
+                    "statusCode": 200,
+                    "message": "Invoice successfully updated!"
+                }
             else:
-                return "Total received amount can't exceed invoice amount."
+                return {
+                    "statusCode": 400,
+                    "message": "Total received amount can't exceed invoice amount."
+                }
         else:
-            return "Invalid credit card."
+            return {
+                "statusCode": 400,
+                "message": "Invalid credit card."
+            }
     else:
-        return "Invalid invoice."
-   
+            return {
+                "statusCode": 400,
+                "message": "Invalid invoice."
+            }
+
 
 # # Retrieve company's statistics - Tom
 @app.post("/company-statistics")
@@ -263,7 +337,7 @@ async def root(payload: Request):
     ).fetchall()
 
     subscriptions_counter = 0
-    
+
     for quote in quotes:
         price = quote[3]
 
@@ -278,9 +352,9 @@ async def root(payload: Request):
         MRR += len(subscriptions) * price
 
     return {
-        "MRR" : MRR, 
-        "ARR" : 12 * MRR,
-        "ARC" : (MRR / subscriptions_counter) if subscriptions_counter > 0 else "Undefined."
+        "MRR": MRR,
+        "ARR": 12 * MRR,
+        "ARC": (MRR / subscriptions_counter) if subscriptions_counter > 0 else "Undefined."
     }
 
 # # Start server
