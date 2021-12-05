@@ -341,7 +341,7 @@ async def root(payload: Request):
     subscriptions_counter=0
 
     for quote in quotes:
-        price=quote[3]
+        price=convertToEuro(quote[3], quote[4])
 
         subscriptions=db.execute(
             'SELECT * FROM subscriptions WHERE quote = ? AND accepted = 1',
