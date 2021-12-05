@@ -51,7 +51,7 @@ db.execute(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             customer TEXT NOT NULL,
             quote INT NOT NULL,
-            accepted BOOL NOT NULL,
+            accepted BOOL NOT NULL DEFAULT 0,
             starting TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     '''
@@ -64,6 +64,7 @@ db.execute(
             subscription INT NOT NULL,
             date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             paid BOOL NOT NULL
+            received FLOAT NOT NULL DEFAULT 0
         )
     '''
 )
@@ -129,7 +130,12 @@ async def root(payload: Request):
     email = body['mail']
     adress = body['adresse']
     iban = body['banque']
-    query_company = dbase.execute('INSERT INTO companies(vat, name, email, adress, iban) VALUES (?,?,?,?,?)''',(vat, name, email, adress, iban))
+
+    db.execute(
+        'INSERT INTO companies(vat, name, email, adress, iban) VALUES (?,?,?,?,?)', 
+        (vat, name, email, adress, iban)
+    )
+
     return vat, name, email, adress, iban
 
 # # Create customer account - Salma
@@ -143,7 +149,12 @@ async def root(payload: Request):
     email = body['mail']
     adress = body['adresse']
     company = body['entreprise']
-    query_company = dbase.execute('INSERT INTO customers(iban, name, email, adress, company_id) VALUES (?,?,?,?,?)', (iban,name,email,adress,company))
+
+    db.execute(
+        'INSERT INTO customers(iban, name, email, adress, company_id) VALUES (?,?,?,?,?)',
+        (iban,name,email,adress,company)
+    )
+
     return iban, name, email, adress, company
 
 # # Create quote - Zelie
@@ -151,11 +162,11 @@ async def root(payload: Request):
 async def root(payload: Request):
     body = await payload.json()
     
-    quote = db.execute('''
-            INSERT INTO quotes
-            (company, quantity, price, currency)
-            VALUES ('{company}','{quantity}','{price}','{currency}')
-            '''.format(company=body['company'],quantity=body['quantity'],price=body['price'],currency=body['currency']))
+    quote = db.execute(
+        'INSERT INTO quotes(company, quantity, price, currency) VALUES (?,?,?,?)',
+        (body['company'], body['quantity'], body['price'], body['currency'])
+    )
+
     return quote 
 
 
@@ -164,23 +175,24 @@ async def root(payload: Request):
 async def root(payload: Request):
     body = await payload.json()
 
-    subscription = db.execute('''
-                INSERT INTO subscription
-                (customer, quote, accepted)
-                VALUES ('{customer}', '{quote}','0')
-                 '''.format(customer=body['customer'],quote=body['quote']))
-                 #j'ai mis la valeur 0 par défaut à 'accepted' mais jsp si c'est correct 
+    subscription = db.execute(
+        'INSERT INTO subscription (customer, quote) VALUES (?,?)',
+        (body['customer'], body['quote'])
+    )
+
     return subscription 
 
 # # Update subscription - Victor
 @app.post("/update-subscription")
 async def root(payload: Request):
     body = await payload.json()
-    accepted = body['accepted']
-    id = body['id']
-    if accepted==True:
-        db.execute('UPDATE subscription set accepted = ? WHERE id = ?',(accepted, (int(id))))
-        return "Subscription updated"
+
+    if body['accepted']==True:
+        db.execute(
+            'UPDATE subscription SET accepted = 1 WHERE id = ?',
+            (int(body['id']))
+        )
+        return "Subscription accepted"
     else:
         return "Bad request"
     
@@ -189,8 +201,12 @@ async def root(payload: Request):
 @app.post("/pending-invoices")
 async def root(payload: Request):
     body = await payload.json()
-    id=body['user']
-    pending_invoices = db.execute('SELECT * from invoices WHERE paid=0 WHERE id ').fetchall()
+    
+    pending_invoices = db.execute(
+        'SELECT * from invoices WHERE paid=0 AND id = ?',
+        (int(body['userId']))
+    ).fetchall()
+
     return pending_invoices
     
 
@@ -198,57 +214,73 @@ async def root(payload: Request):
 @app.post("/update-invoice")
 async def root(payload: Request):
     body = await payload.json()
+
     id = body['invoice_id']
-    amount_received = body['amount_received']
+    amount_received = body['received']
     number = body['card_number']
-    invoice = db.execute('SELECT * FROM invoices WHERE id = ?', (id))
-    total = db.execute ('SELECT total_amount FROM invoices WHERE id = ?', (id))
-    already_received = db.execute ('SELECT amount_received FROM invoices WHERE id = ?', (id))
+    invoice = db.execute('SELECT * FROM invoices WHERE id = ?', (id)).fetchall()
+    total = db.execute ('SELECT total_amount FROM invoices WHERE id = ?', (id)).fetchall()
+
+    # invoice[0] = Invoice to be updated
+    # invoice[0][4] = Fouth column of invoice to be updated: 'received'
 
     if (invoice > 0):
         if CheckCreditCard(number) == True :
-            if (amount_received < total - already_received) == 0 :
-                if (amount_received + already_received == total):
-                    update_invoice = db.execute ('UPDATE invoices SET paid = True AND amount_received = ? WHERE id = ?', (amount_received, (id)))
-                    return update_invoice
+            if (amount_received < total - invoice[0][4]) == 0 :
+
+                if (amount_received + invoice[0][4] == total):
+                    db.execute (
+                        'UPDATE invoices SET paid = 1, received = ? WHERE id = ?',
+                        (float(amount_received), int(id))
+                     )
                 else:
-                    update_already_received = db.execute('UPDATE invoices SET amount_received = ? WHERE id = ?', (amount_received, (id)))
-                    return update_already_received
+                    db.execute(
+                        'UPDATE invoices SET received = ? WHERE id = ?',
+                        (float(amount_received), int(id))
+                    )
+
+                return "Invoice successfully updated!"
             else:
-                return "received too much"
+                return "Total received amount can't exceed invoice amount."
         else:
-            return "bad credit card number"
+            return "Invalid credit card."
     else:
-        return "no invoice found"
+        return "Invalid invoice."
    
 
 # # Retrieve company's statistics - Tom
 @app.post("/company-statistics")
 async def root(payload: Request):
     body = await payload.json()
-    id = body['company_vat_id']
-    quote = db.execute('SELECT * FROM quotes WHERE company = ?', (id))
-    MRR = 0
-    ARR = 0
-    ARC = 0
-    counter = 0
-    
-    for line in quote:
-        price = db.execute('SELECT price FROM quote')
-        join_subscription = db.execute('SELECT * FROM subscriptions JOIN quotes ON subcriptions.quote = quotes.id')
-        for line in join_subscription:
-            MRR += price
-            counter+=1
-    
-    if (counter > 0): 
-        ARC = MRR/line
 
-    ARR = MRR*12
+    id = body['company_vat_id']
+
+    MRR = 0
+
+    quotes = db.execute(
+        'SELECT * FROM quotes WHERE company = ?',
+        (int(id))
+    ).fetchall()
+
+    subscriptions_counter = 0
     
+    for quote in quotes:
+        price = quote[3]
+
+        subscriptions = db.execute(
+            'SELECT * FROM subscriptions WHERE quote = ?',
+            (quote[0])
+        ).fetchall()
+
+        subscriptions_counter += len(subscriptions)
+
+        # MRR = Number of subscriptions for the quote * price of the quote
+        MRR += len(subscriptions) * price
+
     return {
         "MRR" : MRR, 
-        "ARR" : ARR,
-        "ARC" : ARC
+        "ARR" : 12 * MRR,
+        "ARC" : (MRR / subscriptions_counter) if subscriptions_counter > 0 else "Undefined."
     }
 
 # # Start server
