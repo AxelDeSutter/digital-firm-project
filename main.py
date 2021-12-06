@@ -147,7 +147,7 @@ async def root(payload: Request):
 
     return {
         "statusCode": 200,
-        "message": vat + " company has been saved!"
+        "message": name + " company has been saved!"
     }
 
 # # Create customer account - Salma
@@ -184,8 +184,6 @@ async def root(payload: Request):
         'INSERT INTO quotes(company, quantity, price, currency) VALUES (?,?,?,?)',
         (body['company'], body['quantity'], body['price'], body['currency'])
     )
-
-    print(quote)
 
     return {
         "statusCode": 200,
@@ -316,39 +314,35 @@ async def root(payload: Request):
                 "message": "Invalid credit card."
             }
     else:
-            return {
-                "statusCode": 400,
-                "message": "Invalid invoice."
-            }
+        return {
+            "statusCode": 400,
+            "message": "Invalid invoice."
+        }
 
 
 # # Retrieve company's statistics - Tom
 @ app.post("/company-statistics")
 async def root(payload: Request):
-    body=await payload.json()
+    body = await payload.json()
 
-    id=body['company']
+    id = body['company']
 
-    MRR=0
+    MRR = 0
 
-    quotes=db.execute(
+    quotes = db.execute(
         'SELECT * FROM quotes WHERE company = ?',
         (str(id),)
     ).fetchall()
 
-    print("Quotes: " + str(len(quotes)))
-
-    subscriptions_counter=0
+    subscriptions_counter = 0
 
     for quote in quotes:
-        price=convertToEuro(quote[3], quote[4])
+        price = convertToEuro(quote[3], quote[4])
 
-        subscriptions=db.execute(
+        subscriptions = db.execute(
             'SELECT * FROM subscriptions WHERE quote = ? AND accepted = 1',
             (quote[0],)
         ).fetchall()
-
-        print('Subscriptions:' + str(len(subscriptions)))
 
         subscriptions_counter += len(subscriptions)
 
@@ -358,8 +352,28 @@ async def root(payload: Request):
     return {
         "MRR": MRR,
         "ARR": 12 * MRR,
-        "ARC": (MRR / subscriptions_counter) if subscriptions_counter > 0 else "Undefined."
+        "ARC": (MRR / subscriptions_counter) if subscriptions_counter > 0 else "Undefined.",
+        "MRR_WITH_TAX": MRR * 1.21,
+        "ARR_WITH_TAX": 12 * MRR * 1.21,
+        "ARC_WITH_TAX": (MRR / subscriptions_counter) * 1.21 if subscriptions_counter > 0 else "Undefined.",
     }
+
+
+@app.post('/cron-send-invoices')
+async def root(payload: Request):
+    body = await payload.json()
+
+    pending_invoices = db.execute(
+        'SELECT * FROM invoices WHERE paid=0',
+    ).fetchall()
+
+    return {
+        "statusCode": 200,
+        "message": "The following invoices are still waiting to be paid: ",
+        "invoices": pending_invoices
+    }
+
+    return
 
 # # Start server
 if __name__ == '__main__':

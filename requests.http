@@ -3,7 +3,7 @@ content-Type: application/json
 
 {
     "name": "My Super Company",
-    "VAT": "BE1234567890",
+    "VAT": "BE12345678901",
     "email": "super@company.com",
     "adress": "Company City - 1000",
     "IBAN": "BE.123.456.789"
@@ -20,7 +20,7 @@ content-type: application/json
     "name": "Happy Customer",
     "email": "happy@customer.com",
     "adress": "Customer City - 1000",
-    "company": "BE1234567890"
+    "company": "BE12345678901"
 }
 
 ###
@@ -44,7 +44,7 @@ content-type: application/json
 
 {
     "customer": "BE.987.654.321",
-    "quote": 3
+    "quote": 4
 }
 
 ###
@@ -54,7 +54,7 @@ POST http://localhost:8000/update-subscription HTTP/1.1
 content-type: application/json
 
 {
-    "subscription": 3,
+    "subscription": 4,
     "status": "accepted"
 }
 
@@ -88,4 +88,14 @@ content-type: application/json
 
 {
     "company": "BE1234567890"
+}
+
+###
+
+POST http://localhost:8000/cron-send-invoices HTTP/1.1
+# Create Quote
+content-type: application/json
+
+{
+    
 }
