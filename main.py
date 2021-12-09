@@ -90,13 +90,17 @@ def CheckCreditCard(number):
         last = int(number[-1])
         number = number[:-1][::-1]
         total = last
+        i=0
         for digit in number:
             digit = int(digit)
-            if(digit % 2 == 0):
+            if(i % 2 == 0):
                 if(digit*2 <= 9):
                     total += digit*2
                 else:
                     total += digit * 2 - 9
+            else:
+                total += digit
+            i+=1
         return total % 10 == 0
     except:
         return False
