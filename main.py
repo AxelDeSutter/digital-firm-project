@@ -2,7 +2,8 @@ from fastapi import FastAPI, Request
 import sqlite3
 import uvicorn
 import requests
-from datetime import date
+from datetime import date, datetime
+import time
 
 app = FastAPI()
 
@@ -64,6 +65,7 @@ db.execute(
             subscription INT NOT NULL,
             date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             paid BOOL NOT NULL,
+            due FLOAT NOT NULL,
             received FLOAT NOT NULL DEFAULT 0
         )
     '''
@@ -232,6 +234,18 @@ async def root(payload: Request):
 
     subscription = int(body['subscription'])
 
+    subscription_quote = db.execute(
+        'SELECT quote FROM subscriptions WHERE id = ?',
+        ([subscription])
+    ).fetchall()
+
+    subscription_data = db.execute(
+        'SELECT price FROM quotes WHERE id = ?',
+        ([subscription_quote[0][0]])
+    ).fetchall()
+
+    price = subscription_data[0][0]
+
     if body['status'] == "accepted":
 
         # We set the subscription as accepted
@@ -242,8 +256,8 @@ async def root(payload: Request):
 
         # We create the first invoice for the subscription
         db.execute(
-            'INSERT INTO invoices (subscription, paid) VALUES (?,0)',
-            ([subscription])
+            'INSERT INTO invoices (subscription, paid, due) VALUES (?,0,?)',
+            ([subscription, price])
         )
 
         return {
@@ -298,22 +312,25 @@ async def root(payload: Request):
         (int(id),)
     ).fetchall()
 
+    due = invoice[0][4]
+    received_previously = invoice[0][5]
+
     # invoice[0] = Invoice to be updated
     # invoice[0][4] = Fouth column of invoice to be updated: 'received'
 
     if (len(invoice) > 0):
         if CheckCreditCard(number) == True:
-            if (received < invoice[0][3] - invoice[0][4]) == 0:
+            if (received <= due - received_previously):
 
-                if (received + invoice[0][4] == invoice[0][3]):
+                if (received + received_previously == due):
                     db.execute(
                         'UPDATE invoices SET paid = 1, received = ? WHERE id = ?',
-                        (float(received), int(id))
+                        (float(received) + float(received_previously), int(id))
                     )
                 else:
                     db.execute(
                         'UPDATE invoices SET received = ? WHERE id = (?)',
-                        (float(received), int(id))
+                        (float(received) + float(received_previously), int(id))
                     )
 
                 return {
@@ -380,14 +397,39 @@ async def root(payload: Request):
 async def root(payload: Request):
     body = await payload.json()
 
-    pending_invoices = db.execute(
-        'SELECT * FROM invoices WHERE paid=0',
+    all_customers = db.execute(
+        'SELECT * FROM customers',
     ).fetchall()
+
+    # Pour chaque client, on prend sa dernière invoice
+    for customer in all_customers:
+        customer_subscriptions = db.execute(
+            'SELECT * FROM subscriptions WHERE customer = ?',
+            ([customer[0]])
+        ).fetchall()
+        for subscription in customer_subscriptions:
+            last_invoice = db.execute(
+                'SELECT * FROM invoices WHERE subscription = ? ORDER BY id DESC',
+                ([subscription[0]])
+            ).fetchone()
+
+            if(last_invoice):
+                last_invoice_date = last_invoice[2]
+
+                year = int(last_invoice_date.split('-')[0])
+                month = int(last_invoice_date.split('-')[1])
+                day = int(last_invoice_date.split('-')[2].split(' ')[0])
+                
+                next_month = datetime(year + int(month / 12), ((month % 12) + 1), day)
+
+                db.execute(
+                    'INSERT INTO invoices (subscription, date, paid, due) VALUES (?,?,0,?)',
+                    ([subscription[0], next_month, last_invoice[4]])
+                )
 
     return {
         "statusCode": 200,
-        "message": "The following invoices are still waiting to be paid: ",
-        "invoices": pending_invoices
+        "message": "New invoices have been generated.",
     }
 
     return

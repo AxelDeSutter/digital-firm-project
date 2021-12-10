@@ -75,9 +75,9 @@ POST http://localhost:8000/update-invoice HTTP/1.1
 content-type: application/json
 
 {
-    "invoice": 2,
-    "received": 1,
-    "card": "1234567890"
+    "invoice": 1,
+    "received": 98.99,
+    "card": ""
 }
 
 ###
