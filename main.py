@@ -288,12 +288,18 @@ async def root(payload: Request):
             (str(subscription[0]))
         ).fetchall()
 
-        if(len(pending_invoices) > 0):
-            invoices.append(pending_invoices)
+        for invoice in pending_invoices:
+            due = invoice[0][4]
+            due_tvac = due * 1,21
+            ### peut-être besoin de str() ou float() quelque chose ici ?
+        
+            if(len(pending_invoices) > 0):
+                invoices.append(pending_invoices).append(due_tvac)
+            ### peut-être pas besoin d'incluer ce if dans la 2è boucle for mais seulement dans la première
 
     return {
         "statusCode": 200,
-        "message": "The following invoices are still waiting to be paid: ",
+        "message": "The following invoices are still waiting to be regularized, the following (TVA incl.) amounts are to be paid :",
         "invoices": invoices
     }
 
