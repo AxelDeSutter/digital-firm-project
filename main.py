@@ -129,6 +129,19 @@ def convertToEuro(amount, currency):
             rate = 1
     return amount * rate
 
+# function for classement in terms of revenues 
+def classement_revenue(company): 
+
+
+    return 
+
+#function for classement in terms of number of clients 
+
+def classement_client(company): 
+
+
+    return 
+
 # # Routes
 # # Create company account - Salma
 # vat TEXT PRIMARY KEY, # name TEXT NOT NULL, # email TEXT NOT NULL, # adress TEXT NOT NULL, # iban TEXT NOT NULL
@@ -345,7 +358,7 @@ async def root(payload: Request):
 
         subscriptions = db.execute(
             'SELECT * FROM subscriptions WHERE quote = ? AND accepted = 1',
-            (quote[0],)
+            (quote[0])
         ).fetchall()
 
         subscriptions_counter += len(subscriptions)
@@ -378,6 +391,56 @@ async def root(payload: Request):
     }
 
     return
+
+@app.post('/ask-classement-revenue')
+async def root(payload: Request):
+    body = await payload.json()
+
+    #dans le body ils mettront leur vat de la company 
+    vat = body['VAT']
+
+    company = db.execute(
+            'SELECT * FROM companies WHERE vat = ?',
+            (vat)
+        ).fetchall()
+    
+    place=classement_revenue(company) #fonction à faire 
+
+    #nombre de companies à avoir 
+    companies = db.execute(
+                'SELECT * FROM companies'
+            ).fetchall()
+    
+    companies_counter = len(companies)
+
+    return {
+        "Message": "In terms of revenue, you are currently placed in"+ str(place)+ "place in the ranking of companies, out of"+ str(companies_counter)+ "companies"
+    }
+         
+@app.post('/ask-classement-number-of-clients')
+async def root(payload: Request):
+    body = await payload.json()
+
+    #dans le body ils mettront leur vat de la company 
+    vat = body['VAT']
+
+    company = db.execute(
+            'SELECT * FROM companies WHERE vat = ?',
+            (vat)
+        ).fetchall()
+    
+    place =classement_client(company) #fonction à faire 
+
+    #nombre de companies à avoir 
+    companies = db.execute(
+                'SELECT * FROM companies'
+            ).fetchall()
+    
+    companies_counter = len(companies)
+
+    return {
+        "Message": "In terms of number of clients, you are currently ranked in"+ str(place)+ "place in the ranking of companies, out of"+ str(companies_counter)+ "companies"
+    }
 
 # # Start server
 if __name__ == '__main__':
