@@ -133,12 +133,64 @@ def convertToEuro(amount, currency):
 
 # function for classement in terms of revenues 
 def classement_revenue(company): 
+    ### on veut calculer MRR de chacune de nos entreprises puis classer
+    all_MRR = []
+    all_companies = db.execute(
+        'SELECT * FROM companies'
+        ).fetchall()
+    
+    for company in all_companies:
+        quotes_of_companies = db.execute(
+            'SELECT * FROM quotes WHERE company = ?',
+            (str(company[0]),)
+        ).fetchall()
+        ### str() peut-être pas nécessaire, [0] peut-être pas nécéssaire ?
+        
+        number_of_subscriptions = 0
+        MRR = 0
 
+        for quote in quotes_of_companies:
+            price = convertToEuro(quote[3], quote[4])
 
-    return 
+            subscriptions_of_companies = db.execute(
+                'SELECT * FROM subscriptions WHERE quote = ? AND accepted = 1',
+                (quote[0])
+            ).fetchall()
+
+            number_of_subscriptions += len(subscriptions_of_companies)
+
+            # MRR = Number of subscriptions for the quote * price of the quote
+            MRR += len(subscriptions_of_companies) * price
+            
+        all_MRR.append(MRR)
+        all_MRR.sort()
+    
+    ### on a la vat de company, on veut calculer son MRR à elle
+    company_MRR = 0 
+    company_number_of_subscription = 0
+    
+    company_quotes = db.execute(
+        'SELECT * FROM quotes WHERE company = ?',
+        (str(company[0]),)
+    ).fetchall()
+
+    for quote in company_quotes:
+        price = convertToEuro(quote[3], quote[4])
+
+        company_subscriptions = db.execute(
+            'SELECT * FROM subscriptions WHERE quote = ? AND accepted = 1',
+            (quote[0])
+        ).fetchall()
+
+        company_number_of_subscription += len(company_subscriptions)
+        company_MRR += len(company_subscriptions) * price
+    
+    ### on retrouve la place du MRR de l'entreprise dans le classement MRR trouvé plus haut
+    company_rank = all_MRR.index('company_MRR')
+
+    return company_rank
 
 #function for classement in terms of number of clients 
-
 def classement_client(company): 
 
 
@@ -295,7 +347,7 @@ async def root(payload: Request):
         
             if(len(pending_invoices) > 0):
                 invoices.append(pending_invoices).append(due_tvac)
-            ### peut-être pas besoin d'incluer ce if dans la 2è boucle for mais seulement dans la première
+            ### peut-être pas besoin d'inclure ce if dans la 2è boucle for mais seulement dans la première
 
     return {
         "statusCode": 200,
@@ -463,7 +515,7 @@ async def root(payload: Request):
     companies_counter = len(companies)
 
     return {
-        "Message": "In terms of revenue, you are currently placed in"
+        "Message": "In terms of revenue , you are currently placed in"
         + str(place_revenue)+ "place in the ranking of companies and in terms of number of clients, you are currently ranked in"
         + str(place_client)+ "place in the ranking of companies, out of"+ str(companies_counter)+ "companies"
     } 
