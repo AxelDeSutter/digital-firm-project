@@ -2,8 +2,8 @@ POST http://localhost:8000/create-company-account HTTP/1.1
 content-Type: application/json
 
 {
-    "name": "My Super Company",
-    "VAT": "BE12345678901",
+    "name": "My Super Company 2",
+    "VAT": "BE12345678902",
     "email": "super@company.com",
     "adress": "Company City - 1000",
     "IBAN": "BE.123.456.789"
@@ -16,11 +16,11 @@ POST http://localhost:8000/create-customer-account HTTP/1.1
 content-type: application/json
 
 {
-    "IBAN": "BE.987.654.321",
+    "IBAN": "BE.987.654.322",
     "name": "Happy Customer",
     "email": "happy@customer.com",
     "adress": "Customer City - 1000",
-    "company": "BE12345678901"
+    "company": "BE12345678902"
 }
 
 ###
@@ -30,9 +30,9 @@ POST http://localhost:8000/create-quote HTTP/1.1
 content-type: application/json
 
 {
-    "company": "BE1234567890",
+    "company": "BE12345678902",
     "quantity": 1,
-    "price": "99.99",
+    "price": "999999",
     "currency": "USD"
 }
 
@@ -43,8 +43,8 @@ POST http://localhost:8000/create-subscription HTTP/1.1
 content-type: application/json
 
 {
-    "customer": "BE.987.654.321",
-    "quote": 4
+    "customer": "BE.987.654.322",
+    "quote": 5
 }
 
 ###
@@ -54,7 +54,7 @@ POST http://localhost:8000/update-subscription HTTP/1.1
 content-type: application/json
 
 {
-    "subscription": 4,
+    "subscription": 5,
     "status": "accepted"
 }
 
@@ -65,7 +65,7 @@ POST http://localhost:8000/pending-invoices HTTP/1.1
 content-type: application/json
 
 {
-    "customer": "BE.987.654.321"
+    "customer": "BE.987.654.322"
 }
 
 ###
@@ -87,7 +87,7 @@ POST http://localhost:8000/company-statistics HTTP/1.1
 content-type: application/json
 
 {
-    "company": "BE1234567890"
+    "company": "BE12345678902"
 }
 
 ###
@@ -98,4 +98,14 @@ content-type: application/json
 
 {
     
+}
+
+###
+
+POST http://localhost:8000/ask-classement HTTP/1.1
+# Create Quote
+content-type: application/json
+
+{
+    "vat": "BE12345678901"
 }

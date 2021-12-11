@@ -111,8 +111,6 @@ def CheckCreditCard(number):
 # - Example
 # - Convert 100$ to €:
 # - AnyVariableName = convertToEuro(100, "USD")
-
-
 def convertToEuro(amount, currency):
     today = str(date.today())
     actualRate = db.execute(
@@ -131,67 +129,55 @@ def convertToEuro(amount, currency):
             rate = 1
     return amount * rate
 
+def calculateStatistics(company):
+    quotes_of_companies = db.execute(
+        'SELECT * FROM quotes WHERE company = ?',
+        ([str(company)])
+    ).fetchall()
+    
+    number_of_subscriptions = 0
+    MRR = 0
+
+    for quote in quotes_of_companies:
+        price = convertToEuro(quote[3], quote[4])
+
+        subscriptions_of_companies = db.execute(
+            'SELECT * FROM subscriptions WHERE quote = ? AND accepted = 1',
+            ([quote[0]])
+        ).fetchall()
+
+        number_of_subscriptions += len(subscriptions_of_companies)
+
+        MRR += len(subscriptions_of_companies) * price
+
+    return {
+        "MRR": MRR,
+        "ARR": 12 * MRR,
+        "ARC": (MRR / number_of_subscriptions) if number_of_subscriptions > 0 else "Undefined.",
+    }
+
+
 # function for classement in terms of revenues 
-def classement_revenue(company): 
-    ### on veut calculer MRR de chacune de nos entreprises puis classer
+def classement_revenue(company):
     all_MRR = []
     all_companies = db.execute(
         'SELECT * FROM companies'
         ).fetchall()
     
-    for company in all_companies:
-        quotes_of_companies = db.execute(
-            'SELECT * FROM quotes WHERE company = ?',
-            (str(company[0]),)
-        ).fetchall()
-        ### str() peut-être pas nécessaire, [0] peut-être pas nécéssaire ?
-        
-        number_of_subscriptions = 0
-        MRR = 0
-
-        for quote in quotes_of_companies:
-            price = convertToEuro(quote[3], quote[4])
-
-            subscriptions_of_companies = db.execute(
-                'SELECT * FROM subscriptions WHERE quote = ? AND accepted = 1',
-                (quote[0])
-            ).fetchall()
-
-            number_of_subscriptions += len(subscriptions_of_companies)
-
-            # MRR = Number of subscriptions for the quote * price of the quote
-            MRR += len(subscriptions_of_companies) * price
-            
+    for comp in all_companies:
+        MRR = calculateStatistics(comp)['MRR']
         all_MRR.append(MRR)
-        all_MRR.sort()
+        all_MRR.sort(reverse=True)
     
-    ### on a la vat de company, on veut calculer son MRR à elle
-    company_MRR = 0 
-    company_number_of_subscription = 0
-    
-    company_quotes = db.execute(
-        'SELECT * FROM quotes WHERE company = ?',
-        (str(company[0]),)
-    ).fetchall()
+    company_MRR = calculateStatistics(company)['MRR']
 
-    for quote in company_quotes:
-        price = convertToEuro(quote[3], quote[4])
+    company_rank = all_MRR.index(company_MRR)
 
-        company_subscriptions = db.execute(
-            'SELECT * FROM subscriptions WHERE quote = ? AND accepted = 1',
-            (quote[0])
-        ).fetchall()
-
-        company_number_of_subscription += len(company_subscriptions)
-        company_MRR += len(company_subscriptions) * price
-    
-    ### on retrouve la place du MRR de l'entreprise dans le classement MRR trouvé plus haut
-    company_rank = all_MRR.index('company_MRR')
-
-    return company_rank
+    return company_rank + 1
 
 #function for classement in terms of number of clients 
 def classement_client(company): 
+
 
 
     return 
@@ -199,8 +185,6 @@ def classement_client(company):
 # # Routes
 # # Create company account - Salma
 # vat TEXT PRIMARY KEY, # name TEXT NOT NULL, # email TEXT NOT NULL, # adress TEXT NOT NULL, # iban TEXT NOT NULL
-
-
 @app.post("/create-company-account")
 async def root(payload: Request):
     body = await payload.json()
@@ -340,14 +324,14 @@ async def root(payload: Request):
             (str(subscription[0]))
         ).fetchall()
 
-        for invoice in pending_invoices:
-            due = invoice[0][4]
-            due_tvac = due * 1,21
-            ### peut-être besoin de str() ou float() quelque chose ici ?
-        
-            if(len(pending_invoices) > 0):
-                invoices.append(pending_invoices).append(due_tvac)
-            ### peut-être pas besoin d'inclure ce if dans la 2è boucle for mais seulement dans la première
+        if(len(pending_invoices) > 0):
+            for invoice in pending_invoices:
+                # Transforms a tuple in a modifiable list
+                # Needed to be able to .append()
+                inv = list(invoice)
+                inv[4] * 1.21
+                inv.append(inv[4] * 1.21)
+                invoices.append(inv)
 
     return {
         "statusCode": 200,
@@ -417,37 +401,17 @@ async def root(payload: Request):
 async def root(payload: Request):
     body = await payload.json()
 
-    id = body['company']
+    company = body['company']
 
-    MRR = 0
-
-    quotes = db.execute(
-        'SELECT * FROM quotes WHERE company = ?',
-        (str(id),)
-    ).fetchall()
-
-    subscriptions_counter = 0
-
-    for quote in quotes:
-        price = convertToEuro(quote[3], quote[4])
-
-        subscriptions = db.execute(
-            'SELECT * FROM subscriptions WHERE quote = ? AND accepted = 1',
-            (quote[0])
-        ).fetchall()
-
-        subscriptions_counter += len(subscriptions)
-
-        # MRR = Number of subscriptions for the quote * price of the quote
-        MRR += len(subscriptions) * price
+    stats = calculateStatistics(company)
 
     return {
-        "MRR": MRR,
-        "ARR": 12 * MRR,
-        "ARC": (MRR / subscriptions_counter) if subscriptions_counter > 0 else "Undefined.",
-        "MRR_WITH_TAX": MRR * 1.21,
-        "ARR_WITH_TAX": 12 * MRR * 1.21,
-        "ARC_WITH_TAX": (MRR / subscriptions_counter) * 1.21 if subscriptions_counter > 0 else "Undefined.",
+        "MRR": stats['MRR'],
+        "ARR": stats['ARR'],
+        "ARC": stats['ARC'],
+        "MRR_TVAC": stats['MRR'] * 1.21,
+        "ARR_TVAC": stats['ARR'] * 1.21,
+        "ARC_TVAC": stats['ARC'] * 1.21,
     }
 
 
@@ -500,25 +464,28 @@ async def root(payload: Request):
     vat = body['vat']
 
     company = db.execute(
-            'SELECT * FROM companies WHERE vat = ?',
-            (vat)
-        ).fetchall()
+        'SELECT * FROM companies WHERE vat = ?',
+        ([vat])
+    ).fetchall()
     
-    place_revenue=classement_revenue(company) #fonction à faire 
-    place_client =classement_client(company) #fonction à faire
+    place_revenue=classement_revenue(company[0]) #fonction à faire 
+    place_client =classement_client(company[0]) #fonction à faire
 
     #nombre de companies à avoir 
     companies = db.execute(
-                'SELECT * FROM companies'
-            ).fetchall()
+        'SELECT * FROM companies'
+    ).fetchall()
     
     companies_counter = len(companies)
 
     return {
-        "Message": "In terms of revenue , you are currently placed in"
-        + str(place_revenue)+ "place in the ranking of companies and in terms of number of clients, you are currently ranked in"
-        + str(place_client)+ "place in the ranking of companies, out of"+ str(companies_counter)+ "companies"
-    } 
+        "statusCode": 400,
+        "message": "In terms of revenue , you are currently placed in "
+        + str(place_revenue)+ " place in the ranking of companies and in terms of number of clients, you are currently ranked in"
+        + str(place_client)+ "place in the ranking of companies, out of "+ str(companies_counter)+ " companies",
+        "place_revenue": place_revenue,
+        "place_clients": place_client,
+    }
 
 
 # # Start server
