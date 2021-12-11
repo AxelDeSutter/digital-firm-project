@@ -150,10 +150,16 @@ def calculateStatistics(company):
 
         MRR += len(subscriptions_of_companies) * price
 
+    company_customers = db.execute(
+        'SELECT * FROM customers WHERE company = ?',
+        ([str(company)])
+    ).fetchall()
+
     return {
         "MRR": MRR,
         "ARR": 12 * MRR,
         "ARC": (MRR / number_of_subscriptions) if number_of_subscriptions > 0 else "Undefined.",
+        "CUSTOMERS": len(company_customers)
     }
 
 
@@ -165,11 +171,11 @@ def classement_revenue(company):
         ).fetchall()
     
     for comp in all_companies:
-        MRR = calculateStatistics(comp)['MRR']
+        MRR = calculateStatistics(comp[0])['MRR']
         all_MRR.append(MRR)
         all_MRR.sort(reverse=True)
     
-    company_MRR = calculateStatistics(company)['MRR']
+    company_MRR = calculateStatistics(company[0])['MRR']
 
     company_rank = all_MRR.index(company_MRR)
 
@@ -177,10 +183,21 @@ def classement_revenue(company):
 
 #function for classement in terms of number of clients 
 def classement_client(company): 
+    all_CUSTOMERS = []
+    all_companies = db.execute(
+        'SELECT * FROM companies'
+    ).fetchall()
+    
+    for comp in all_companies:
+        CUSTOMERS = calculateStatistics(comp[0])['CUSTOMERS']
+        all_CUSTOMERS.append(CUSTOMERS)
+        all_CUSTOMERS.sort(reverse=True)
+    
+    company_CUSTOMERS = calculateStatistics(company[0])['CUSTOMERS']
 
+    company_rank = all_CUSTOMERS.index(company_CUSTOMERS)
 
-
-    return 
+    return company_rank + 1
 
 # # Routes
 # # Create company account - Salma
@@ -409,6 +426,7 @@ async def root(payload: Request):
         "MRR": stats['MRR'],
         "ARR": stats['ARR'],
         "ARC": stats['ARC'],
+        "CUSTOMERS": stats['CUSTOMERS'],
         "MRR_TVAC": stats['MRR'] * 1.21,
         "ARR_TVAC": stats['ARR'] * 1.21,
         "ARC_TVAC": stats['ARC'] * 1.21,
@@ -417,7 +435,6 @@ async def root(payload: Request):
 
 @app.post('/cron-send-invoices')
 async def root(payload: Request):
-    body = await payload.json()
 
     all_customers = db.execute(
         'SELECT * FROM customers',
@@ -453,8 +470,6 @@ async def root(payload: Request):
         "statusCode": 200,
         "message": "New invoices have been generated.",
     }
-
-    return
 
 @app.post('/ask-classement')
 async def root(payload: Request):

@@ -16,8 +16,8 @@ POST http://localhost:8000/create-customer-account HTTP/1.1
 content-type: application/json
 
 {
-    "IBAN": "BE.987.654.322",
-    "name": "Happy Customer",
+    "IBAN": "BE.987.654.323",
+    "name": "Happy Customer 3",
     "email": "happy@customer.com",
     "adress": "Customer City - 1000",
     "company": "BE12345678902"
