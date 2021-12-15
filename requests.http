@@ -87,7 +87,7 @@ POST http://localhost:8000/company-statistics HTTP/1.1
 content-type: application/json
 
 {
-    "company": "BE12345678902"
+    "company": "BE12345678901"
 }
 
 ###
