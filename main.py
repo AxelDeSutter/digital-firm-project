@@ -246,7 +246,6 @@ async def root(payload: Request):
     )
 
     return {
-        "statusCode": 200,
         "message": name + " customer has been saved!"
     }
 
@@ -263,7 +262,6 @@ async def root(payload: Request):
     )
 
     return {
-        "statusCode": 200,
         "message": "Quote (id: " + str(quote.lastrowid) + ") has been saved!"
     }
 
@@ -279,7 +277,6 @@ async def root(payload: Request):
     )
 
     return {
-        "statusCode": 200,
         "message": "Subscription (id: " + str(subscription.lastrowid) + ") has been saved for customer " + body['customer'] + "!"
     }
 
@@ -319,12 +316,10 @@ async def root(payload: Request):
         )
 
         return {
-            "statusCode": 200,
             "message": "Subscription (id: " + str(subscription) + ") has been accepted!"
         }
     else:
         return {
-            "statusCode": 400,
             "message": "Bad request."
         }
 
@@ -356,7 +351,6 @@ async def root(payload: Request):
                 invoices.append(inv)
 
     return {
-        "statusCode": 200,
         "message": "The following invoices are still waiting to be regularized, the following (TVA incl.) amounts are to be paid :",
         "invoices": invoices
     }
@@ -398,22 +392,18 @@ async def root(payload: Request):
                     )
 
                 return {
-                    "statusCode": 200,
                     "message": "Invoice successfully updated!"
                 }
             else:
                 return {
-                    "statusCode": 400,
                     "message": "Total received amount can't exceed invoice amount."
                 }
         else:
             return {
-                "statusCode": 400,
                 "message": "Invalid credit card."
             }
     else:
         return {
-            "statusCode": 400,
             "message": "Invalid invoice."
         }
 
@@ -500,7 +490,6 @@ async def root(payload: Request):
                 )
 
     return {
-        "statusCode": 200,
         "message": "New invoices have been generated.",
     }
 
@@ -527,7 +516,6 @@ async def root(payload: Request):
     companies_counter = len(companies)
 
     return {
-        "statusCode": 400,
         "message": "In terms of revenue , you are currently placed in "
         + str(place_revenue)+ " place in the ranking of companies and in terms of number of clients, you are currently ranked in"
         + str(place_client)+ "place in the ranking of companies, out of "+ str(companies_counter)+ " companies",
