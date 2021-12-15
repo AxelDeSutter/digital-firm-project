@@ -29,7 +29,8 @@ db.execute(
             name TEXT NOT NULL,
             email TEXT NOT NULL,
             adress TEXT NOT NULL,
-            company TEXT NOT NULL
+            company TEXT,
+            FOREIGN KEY (company) REFERENCES companies(vat)
         )
     '''
 )
@@ -41,7 +42,8 @@ db.execute(
             company TEXT NOT NULL,
             quantity INT NOT NULL,
             price FLOAT NOT NULL,
-            currency TEXT NOT NULL
+            currency TEXT NOT NULL,
+            FOREIGN KEY (company) REFERENCES companies(vat)
         )
     '''
 )
@@ -53,7 +55,9 @@ db.execute(
             customer TEXT NOT NULL,
             quote INT NOT NULL,
             accepted BOOL NOT NULL DEFAULT 0,
-            starting TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            starting TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer) REFERENCES customers(iban),
+            FOREIGN KEY (quote) REFERENCES quotes(id)
         )
     '''
 )
@@ -66,7 +70,8 @@ db.execute(
             date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             paid BOOL NOT NULL,
             due FLOAT NOT NULL,
-            received FLOAT NOT NULL DEFAULT 0
+            received FLOAT NOT NULL DEFAULT 0,
+            FOREIGN KEY (subscription) REFERENCES subscriptions(id)
         )
     '''
 )
@@ -422,14 +427,42 @@ async def root(payload: Request):
 
     stats = calculateStatistics(company)
 
+    company_customers = db.execute(
+        'SELECT * FROM customers WHERE company = ?',
+        ([str(company)])
+    ).fetchall()
+
+    customers_array = []
+    for customer in company_customers:
+
+        customer_subscriptions = db.execute(
+            'SELECT * FROM subscriptions WHERE customer = ?',
+            ([customer[0]])
+        ).fetchall()
+
+        customers_array.append({
+            'customer': customer,
+            'subscriptions': customer_subscriptions
+        })
+
+
     return {
-        "MRR": stats['MRR'],
-        "ARR": stats['ARR'],
-        "ARC": stats['ARC'],
-        "CUSTOMERS": stats['CUSTOMERS'],
-        "MRR_TVAC": stats['MRR'] * 1.21,
-        "ARR_TVAC": stats['ARR'] * 1.21,
-        "ARC_TVAC": stats['ARC'] * 1.21,
+        "MRR": {
+            "NOTAX": stats['MRR'],
+            "TAX": stats['MRR'] * 1.21
+        },
+        "ARR": {
+            "NOTAX": stats['ARR'],
+            "TAX": stats['ARR'] * 1.21
+        },
+        "ARC": {
+            "NOTAX": stats['ARC'],
+            "TAX": stats['ARC'] * 1.21
+        },
+        "CUSTOMERS": {
+            "total": stats['CUSTOMERS'],
+            "details": customers_array
+        }
     }
 
 

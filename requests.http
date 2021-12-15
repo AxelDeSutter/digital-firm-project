@@ -2,8 +2,8 @@ POST http://localhost:8000/create-company-account HTTP/1.1
 content-Type: application/json
 
 {
-    "name": "My Super Company 2",
-    "VAT": "BE12345678902",
+    "name": "My Super Company",
+    "VAT": "BE12345678901",
     "email": "super@company.com",
     "adress": "Company City - 1000",
     "IBAN": "BE.123.456.789"
@@ -16,8 +16,8 @@ POST http://localhost:8000/create-customer-account HTTP/1.1
 content-type: application/json
 
 {
-    "IBAN": "BE.987.654.323",
-    "name": "Happy Customer 3",
+    "IBAN": "BE.987.654.3232",
+    "name": "Happy Customer",
     "email": "happy@customer.com",
     "adress": "Customer City - 1000",
     "company": "BE12345678902"
