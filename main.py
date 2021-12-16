@@ -148,10 +148,10 @@ async def root(payload: Request):
                     "subscription": inv[1],
                     "date": inv[2],
                     "status": "Unpaid",
-                    "NOTAX": inv[4],
-                    "TAX": inv[4] * 1.21,
+                    "NOTAX": inv[4] / 1.21,
+                    "TAX": inv[4],
                     "received": inv[5],
-                    "due": inv[4] * 1.21 - inv[5],
+                    "due": inv[4] - inv[5],
                 })
 
     return {
