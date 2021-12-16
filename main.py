@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 import sqlite3
 import uvicorn
 from datetime import datetime
-from helpers import calculateStatistics, convertToEuro, CheckCreditCard, classement_revenue, classement_client
+from helpers import calculateStatistics, convertToEuro, CheckCreditCard, revenueRanking, customersRanking
 from database import InitDatabase
 
 app = FastAPI()
@@ -21,13 +21,13 @@ async def root(payload: Request):
     adress = body['adress']
     iban = body['IBAN']
 
-    db.execute(
+    company = db.execute(
         'INSERT INTO companies (vat, name, email, adress, iban) VALUES (?,?,?,?,?)',
         (vat, name, email, adress, iban)
     )
 
     return {
-        "message": name + " company has been saved!"
+        "message": name + " company has been saved (id: " + str(company.lastrowid) + ") !"
     }
 
 # # Create customer account - Salma
@@ -43,13 +43,13 @@ async def root(payload: Request):
     adress = body['adress']
     company = body['company']
 
-    db.execute(
+    customer = db.execute(
         'INSERT INTO customers(iban, name, email, adress, company) VALUES (?,?,?,?,?)',
         (iban, name, email, adress, company)
     )
 
     return {
-        "message": name + " customer has been saved!"
+        "message": name + " customer has been saved (id: " + str(customer.lastrowid) + ") !"
     }
 
 # # Create quote - Zelie
@@ -83,9 +83,6 @@ async def root(payload: Request):
         "message": "Subscription (id: " + str(subscription.lastrowid) + ") has been saved for customer " + body['customer'] + "!"
     }
 
-# # Update subscription - Victor
-
-
 @app.post("/update-subscription")
 async def root(payload: Request):
     body = await payload.json()
@@ -98,11 +95,11 @@ async def root(payload: Request):
     ).fetchall()
 
     subscription_data = db.execute(
-        'SELECT price FROM quotes WHERE id = ?',
+        'SELECT price, currency FROM quotes WHERE id = ?',
         ([subscription_quote[0][0]])
     ).fetchall()
 
-    price = subscription_data[0][0]
+    price = convertToEuro(subscription_data[0][0],subscription_data[0][1])
 
     if body['status'] == "accepted":
 
@@ -126,8 +123,6 @@ async def root(payload: Request):
             "message": "Bad request."
         }
 
-
-# # Retrieve pending invoices - Victor
 @app.post("/pending-invoices")
 async def root(payload: Request):
     body = await payload.json()
@@ -146,26 +141,31 @@ async def root(payload: Request):
 
         if(len(pending_invoices) > 0):
             for invoice in pending_invoices:
-                # Transforms a tuple in a modifiable list
-                # Needed to be able to .append()
                 inv = list(invoice)
-                inv[4] * 1.21
-                inv.append(inv[4] * 1.21)
-                invoices.append(inv)
+                invoices.append({
+                    "id": inv[0],
+                    "subscription": inv[1],
+                    "date": inv[2],
+                    "status": "Unpaid",
+                    "NOTAX": inv[4],
+                    "TAX": inv[4] * 1.21,
+                    "received": inv[5],
+                    "due": inv[4] * 1.21 - inv[5],
+                })
 
     return {
-        "message": "The following invoices are still waiting to be regularized, the following (TVA incl.) amounts are to be paid :",
-        "invoices": invoices
+        "message": "The following invoices are still waiting to be regularized:",
+        "details": {
+            "invoices": invoices
+        }
     }
 
-
-# # Update invoice (paid/unpaid) - Tom
 @app.post("/update-invoice")
 async def root(payload: Request):
     body = await payload.json()
 
     id = body['invoice']
-    received = body['received']
+    received = convertToEuro(float(body['received']), body['currency'])
     number = body['card']
 
     invoice = db.execute(
@@ -175,9 +175,6 @@ async def root(payload: Request):
 
     due = invoice[0][4]
     received_previously = invoice[0][5]
-
-    # invoice[0] = Invoice to be updated
-    # invoice[0][4] = Fouth column of invoice to be updated: 'received'
 
     if (len(invoice) > 0):
         if CheckCreditCard(number) == True:
@@ -195,7 +192,7 @@ async def root(payload: Request):
                     )
 
                 return {
-                    "message": "Invoice successfully updated!"
+                    "message": "Invoice (id: "+ str(id) +") successfully updated!"
                 }
             else:
                 return {
@@ -210,8 +207,6 @@ async def root(payload: Request):
             "message": "Invalid invoice."
         }
 
-
-# # Retrieve company's statistics - Tom
 @ app.post("/company-statistics")
 async def root(payload: Request):
     body = await payload.json()
@@ -240,21 +235,24 @@ async def root(payload: Request):
 
 
     return {
-        "MRR": {
-            "NOTAX": stats['MRR'],
-            "TAX": stats['MRR'] * 1.21
-        },
-        "ARR": {
-            "NOTAX": stats['ARR'],
-            "TAX": stats['ARR'] * 1.21
-        },
-        "ACR": {
-            "NOTAX": stats['ARC'],
-            "TAX": stats['ARC'] * 1.21
-        },
-        "CUSTOMERS": {
-            "total": stats['CUSTOMERS'],
-            "details": customers_array
+        "message": "Here are the statistics of your company (" + str(company) + "):",
+        "details": {
+            "MRR": {
+                "NOTAX": stats['MRR'],
+                "TAX": stats['MRR'] * 1.21
+            },
+            "ARR": {
+                "NOTAX": stats['ARR'],
+                "TAX": stats['ARR'] * 1.21
+            },
+            "ACR": {
+                "NOTAX": stats['ARC'],
+                "TAX": stats['ARC'] * 1.21
+            },
+            "CUSTOMERS": {
+                "total": stats['CUSTOMERS'],
+                "details": customers_array
+            }
         }
     }
 
@@ -308,8 +306,8 @@ async def root(payload: Request):
         ([vat])
     ).fetchall()
     
-    place_revenue=classement_revenue(company[0]) #fonction à faire 
-    place_client =classement_client(company[0]) #fonction à faire
+    place_revenue=revenueRanking(company[0]) #fonction à faire 
+    place_client =customersRanking(company[0]) #fonction à faire
 
     #nombre de companies à avoir 
     companies = db.execute(
@@ -319,11 +317,9 @@ async def root(payload: Request):
     companies_counter = len(companies)
 
     return {
-        "message": "In terms of revenue , you are currently placed in "
-        + str(place_revenue)+ " place in the ranking of companies and in terms of number of clients, you are currently ranked in"
-        + str(place_client)+ "place in the ranking of companies, out of "+ str(companies_counter)+ " companies",
-        "place_revenue": place_revenue,
-        "place_clients": place_client,
+        "message": "Here are your company's ("+ str(vat) +") place in our ranking, out of "+str(companies_counter)+" companies :",
+        "revenue": place_revenue,
+        "customers": place_client,
     }
 
 

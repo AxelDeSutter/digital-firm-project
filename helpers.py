@@ -24,10 +24,6 @@ def CheckCreditCard(number):
     except:
         return False
 
-# Conversion between currencies
-# - Example
-# - Convert 100$ to €:
-# - AnyVariableName = convertToEuro(100, "USD")
 def convertToEuro(amount, currency):
     today = str(date.today())
     actualRate = db.execute(
@@ -80,8 +76,7 @@ def calculateStatistics(company):
     }
 
 
-# function for classement in terms of revenues 
-def classement_revenue(company):
+def revenueRanking(company):
     all_MRR = []
     all_companies = db.execute(
         'SELECT * FROM companies'
@@ -98,8 +93,7 @@ def classement_revenue(company):
 
     return company_rank + 1
 
-#function for classement in terms of number of clients 
-def classement_client(company): 
+def customersRanking(company): 
     all_CUSTOMERS = []
     all_companies = db.execute(
         'SELECT * FROM companies'
