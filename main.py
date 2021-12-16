@@ -100,6 +100,7 @@ async def root(payload: Request):
     ).fetchall()
 
     price = convertToEuro(subscription_data[0][0],subscription_data[0][1])
+    price_tva_included = price * 1.21
 
     if body['status'] == "accepted":
 
@@ -112,7 +113,7 @@ async def root(payload: Request):
         # We create the first invoice for the subscription
         db.execute(
             'INSERT INTO invoices (subscription, paid, due) VALUES (?,0,?)',
-            ([subscription, price])
+            ([subscription, price_tva_included])
         )
 
         return {
