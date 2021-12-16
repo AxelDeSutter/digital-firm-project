@@ -78,7 +78,7 @@ content-type: application/json
     "invoice": 2,
     "received": 98.99,
     "currency": "USD",
-    "card": ""
+    "card": "374245455400126"
 }
 
 ###
