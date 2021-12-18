@@ -36,8 +36,7 @@ def convertToEuro(amount, currency):
             'https://v6.exchangerate-api.com/v6/9f3b63e712fb3bf92872a235/latest/'+currency).json()
         if(rateFromApi['result'] == "success"):
             rate = rateFromApi['conversion_rates']['EUR']
-            db.execute(
-                'INSERT INTO rates (date, currency, rate) VALUES (?,?,?)', (today, currency, rate))
+            db.execute('INSERT INTO rates (date, currency, rate) VALUES (?,?,?)', (today, currency, rate))
         else:
             rate = 1
     return amount * rate

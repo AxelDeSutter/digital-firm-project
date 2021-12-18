@@ -2,11 +2,11 @@ POST http://localhost:8000/create-company-account HTTP/1.1
 content-Type: application/json
 
 {
-    "name": "My Super Company",
-    "VAT": "BE12345678901",
-    "email": "super@company.com",
+    "name": "My Wonderful Company",
+    "VAT": "BE12345678902",
+    "email": "wonderful@company.com",
     "adress": "Company City - 1000",
-    "IBAN": "BE.123.456.789"
+    "IBAN": "BE.123.456.7810"
 }
 
 ###
@@ -16,9 +16,9 @@ POST http://localhost:8000/create-customer-account HTTP/1.1
 content-type: application/json
 
 {
-    "IBAN": "BE.987.654.3232",
-    "name": "Happy Customer",
-    "email": "happy@customer.com",
+    "IBAN": "BE.987.654.3233",
+    "name": "Lonely Customer",
+    "email": "lonely@customer.com",
     "adress": "Customer City - 1000",
     "company": "BE12345678902"
 }
@@ -32,8 +32,8 @@ content-type: application/json
 {
     "company": "BE12345678902",
     "quantity": 1,
-    "price": "100",
-    "currency": "USD"
+    "price": "25",
+    "currency": "EUR"
 }
 
 ###
@@ -43,8 +43,8 @@ POST http://localhost:8000/create-subscription HTTP/1.1
 content-type: application/json
 
 {
-    "customer": "BE.987.654.3232",
-    "quote": 2
+    "customer": "BE.987.654.3233",
+    "quote": 4
 }
 
 ###
@@ -54,7 +54,7 @@ POST http://localhost:8000/update-subscription HTTP/1.1
 content-type: application/json
 
 {
-    "subscription": 3,
+    "subscription": 4,
     "status": "accepted"
 }
 
@@ -65,7 +65,7 @@ POST http://localhost:8000/pending-invoices HTTP/1.1
 content-type: application/json
 
 {
-    "customer": "BE.987.654.3232"
+    "customer": "BE.987.654.3233"
 }
 
 ###
@@ -75,9 +75,9 @@ POST http://localhost:8000/update-invoice HTTP/1.1
 content-type: application/json
 
 {
-    "invoice": 2,
-    "received": 98.99,
-    "currency": "USD",
+    "invoice": 4,
+    "received": 20.25,
+    "currency": "EUR",
     "card": "374245455400126"
 }
 
